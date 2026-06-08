@@ -13,8 +13,8 @@ pub use search::SearchIndex;
 
 /// Open (or create) the SQLite database and run migrations.
 ///
-/// Automatically loads the sqlite-vec extension for vector search.
-pub fn open(path: &str) -> anyhow::Result<Connection> {
+/// `vec_dim` must match the embedding model dimension (1024 for DashScope, etc.).
+pub fn open(path: &str, vec_dim: usize) -> anyhow::Result<Connection> {
     // Register sqlite-vec as an auto-extension (loaded for every new connection)
     unsafe {
         sqlite3_auto_extension(Some(std::mem::transmute::<
@@ -33,7 +33,7 @@ pub fn open(path: &str) -> anyhow::Result<Connection> {
     conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")?;
 
     // Run schema migrations
-    schema::migrate(&conn)?;
+    schema::migrate(&conn, vec_dim)?;
 
     Ok(conn)
 }
@@ -41,7 +41,7 @@ pub fn open(path: &str) -> anyhow::Result<Connection> {
 /// Open an in-memory database for testing.
 ///
 /// Registers sqlite-vec auto-extension and runs migrations.
-pub fn open_in_memory() -> anyhow::Result<Connection> {
+pub fn open_in_memory(vec_dim: usize) -> anyhow::Result<Connection> {
     unsafe {
         sqlite3_auto_extension(Some(std::mem::transmute::<
             *const (),
@@ -54,13 +54,15 @@ pub fn open_in_memory() -> anyhow::Result<Connection> {
     }
     let conn = Connection::open_in_memory()?;
     conn.execute_batch("PRAGMA foreign_keys=ON;")?;
-    schema::migrate(&conn)?;
+    schema::migrate(&conn, vec_dim)?;
     Ok(conn)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const TEST_DIM: usize = 1024;
 
     #[test]
     fn test_open_in_memory() {
@@ -76,7 +78,7 @@ mod tests {
         }
         let conn = Connection::open_in_memory().unwrap();
         conn.execute_batch("PRAGMA foreign_keys=ON;").unwrap();
-        schema::migrate(&conn).unwrap();
+        schema::migrate(&conn, TEST_DIM).unwrap();
 
         // Verify vec0 works
         let version: String = conn

@@ -36,7 +36,7 @@ enum Command {
         content: String,
         #[arg(short, long)]
         context: Option<String>,
-        #[arg(long, default_value = "true")]
+        #[arg(long, default_value = "true", action = clap::ArgAction::Set)]
         extract_facts: bool,
     },
     /// Search for memories

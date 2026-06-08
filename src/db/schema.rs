@@ -2,9 +2,14 @@
 
 use rusqlite::Connection;
 
-/// Run all pending schema migrations.
-pub fn migrate(conn: &Connection) -> anyhow::Result<()> {
-    conn.execute_batch(
+/// Run schema migrations with the given embedding vector dimension.
+///
+/// The `vec_dim` must match the embedding model in use (1024 for DashScope,
+/// 1536 for OpenAI text-embedding-3-small, etc.). On first run the vec0 table
+/// is created with this dimension. On subsequent runs, if a vec0 table already
+/// exists, returns an error if the dimension doesn't match.
+pub fn migrate(conn: &Connection, vec_dim: usize) -> anyhow::Result<()> {
+    conn.execute_batch(&format!(
         "
         -- Memories table: stores all memory units
         CREATE TABLE IF NOT EXISTS memories (
@@ -12,7 +17,7 @@ pub fn migrate(conn: &Connection) -> anyhow::Result<()> {
             content     TEXT NOT NULL,
             fact        TEXT,
             context     TEXT,
-            metadata    TEXT NOT NULL DEFAULT '{}',
+            metadata    TEXT NOT NULL DEFAULT '{{}}',
             created_at  TEXT NOT NULL DEFAULT (datetime('now'))
         );
 
@@ -44,13 +49,34 @@ pub fn migrate(conn: &Connection) -> anyhow::Result<()> {
         END;
 
         -- Vector index for semantic search (sqlite-vec vec0 virtual table).
-        -- Dimension 1024 matches DashScope text-embedding-v3 default.
-        -- For OpenAI text-embedding-3-small, change to float[1536].
         CREATE VIRTUAL TABLE IF NOT EXISTS vec_memories USING vec0(
-            embedding float[1024]
+            embedding float[{vec_dim}]
         );
+
+        -- Trigger to clean up vec_memories when memories are deleted
+        CREATE TRIGGER IF NOT EXISTS vec_memories_ad AFTER DELETE ON memories BEGIN
+            DELETE FROM vec_memories WHERE rowid = old.rowid;
+        END;
         ",
-    )?;
+    ))?;
+
+    // Verify dimension consistency on re-open
+    let existing_dim: Option<usize> = conn
+        .query_row(
+            "SELECT dimension FROM vec_memories_dims LIMIT 1",
+            [],
+            |row| row.get::<_, i64>(0).map(|d| d as usize),
+        )
+        .ok();
+
+    if let Some(dim) = existing_dim
+        && dim != vec_dim
+    {
+        anyhow::bail!(
+            "vec_memories dimension mismatch: database has {dim}, config expects {vec_dim}. \
+             Either update the embedding model to match, or delete the database and re-create it."
+        );
+    }
 
     Ok(())
 }

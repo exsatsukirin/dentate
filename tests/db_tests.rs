@@ -8,7 +8,7 @@ use dentate::db::{MemoryStore, SearchIndex};
 
 /// Create an in-memory test database.
 fn test_db() -> rusqlite::Connection {
-    dentate::db::open_in_memory().expect("failed to open in-memory test database")
+    dentate::db::open_in_memory(1024).expect("failed to open in-memory test database")
 }
 
 /// Create a test memory with a random ID.

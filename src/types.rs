@@ -68,12 +68,13 @@ pub struct BankConfig {
     pub llm_model: String,
     pub llm_base_url: Option<String>,
     /// Embedding provider: "openai", "dashscope", "zhipu", or "none".
-    /// "none" disables embeddings — recall falls back to keyword search.
     pub embedding_provider: String,
     pub embedding_model: String,
     pub embedding_base_url: Option<String>,
     pub embedding_dimensions: Option<u32>,
     pub enable_reranker: bool,
+    /// Embedding vector dimension (1024 for DashScope, 1536 for OpenAI, etc.).
+    pub vec_dim: usize,
 }
 
 impl BankConfig {
@@ -95,6 +96,14 @@ impl BankConfig {
             _ => Some("https://api.openai.com/v1".into()),
         });
 
+        // Dimension from config, or provider default
+        let vec_dim = cfg.embeddings.dimensions.map(|d| d as usize).unwrap_or_else(|| {
+            match provider.as_str() {
+                "openai" => 1536,
+                _ => 1024, // dashscope, zhipu, and others default to 1024
+            }
+        });
+
         Self {
             database_path: cfg.database.path.clone(),
             llm_provider: cfg.llm.provider.clone(),
@@ -105,6 +114,7 @@ impl BankConfig {
             embedding_base_url: emb_base,
             embedding_dimensions: cfg.embeddings.dimensions,
             enable_reranker: cfg.reranker.enabled,
+            vec_dim,
         }
     }
 
@@ -126,6 +136,7 @@ impl Default for BankConfig {
             embedding_base_url: Some("https://dashscope.aliyuncs.com/compatible-mode/v1".into()),
             embedding_dimensions: None,
             enable_reranker: false,
+            vec_dim: 1024,
         }
     }
 }

@@ -15,7 +15,13 @@ impl SearchIndex {
         limit: usize,
     ) -> anyhow::Result<Vec<(Memory, f32)>> {
         let safe_query = query.replace(['"', '*'], "");
-        let fts_query = format!("\"{}\"", safe_query);
+        // Split into words for AND matching (not exact phrase)
+        let words: Vec<&str> = safe_query.split_whitespace().collect();
+        let fts_query = if words.is_empty() {
+            safe_query
+        } else {
+            words.join(" AND ")
+        };
 
         let sql = "
             SELECT m.id, m.content, m.fact, m.context, m.metadata, m.created_at,

@@ -7,11 +7,24 @@ impl MemoryBank {
     /// Store a new memory.
     ///
     /// When embeddings are disabled, only FTS5 keyword search is available.
+    /// The `metadata` parameter allows attaching custom data to the memory.
     pub async fn retain(
         &self,
         content: &str,
         context: Option<&str>,
         extract_facts: bool,
+    ) -> anyhow::Result<Vec<Memory>> {
+        self.retain_with_metadata(content, context, extract_facts, serde_json::json!({}))
+            .await
+    }
+
+    /// Store a new memory with custom metadata.
+    pub async fn retain_with_metadata(
+        &self,
+        content: &str,
+        context: Option<&str>,
+        extract_facts: bool,
+        metadata: serde_json::Value,
     ) -> anyhow::Result<Vec<Memory>> {
         let facts: Vec<String> = if extract_facts {
             self.llm.extract_facts(content, context).await?
@@ -42,19 +55,32 @@ impl MemoryBank {
                 content: content.to_string(),
                 fact: Some(fact.clone()),
                 context: context.map(|s| s.to_string()),
-                metadata: serde_json::json!({}),
+                metadata: metadata.clone(),
                 created_at: now,
                 relevance_score: None,
             };
 
-            crate::db::MemoryStore::insert(&db, &memory)?;
+            // Insert and get rowid via RETURNING clause (avoids last_insert_rowid race)
+            let rowid: i64 = db.query_row(
+                "INSERT INTO memories (id, content, fact, context, metadata, created_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6) RETURNING rowid",
+                rusqlite::params![
+                    memory.id,
+                    memory.content,
+                    memory.fact,
+                    memory.context,
+                    memory.metadata.to_string(),
+                    memory.created_at.to_rfc3339(),
+                ],
+                |row| row.get(0),
+            )?;
 
             // Insert embedding if available
             if let Some(ref emb_list) = embeddings {
                 let emb_json = serde_json::to_string(&emb_list[i])?;
                 db.execute(
-                    "INSERT INTO vec_memories(rowid, embedding) VALUES (last_insert_rowid(), ?1)",
-                    rusqlite::params![emb_json],
+                    "INSERT INTO vec_memories(rowid, embedding) VALUES (?1, ?2)",
+                    rusqlite::params![rowid, emb_json],
                 )?;
             }
 

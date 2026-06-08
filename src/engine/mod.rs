@@ -33,7 +33,7 @@ impl MemoryBank {
     }
 
     pub fn with_config(config: BankConfig) -> anyhow::Result<Self> {
-        let conn = crate::db::open(&config.database_path)?;
+        let conn = crate::db::open(&config.database_path, config.vec_dim)?;
         let llm = crate::api::create_llm_client(&config)?;
         let embeddings = crate::api::create_embeddings_client(&config)?;
         let reranker = if config.enable_reranker {

@@ -33,17 +33,22 @@ where
     }
 }
 
+/// Returns true if the error looks transient (rate limit, server error, network blip).
+/// 401/403 are NEVER retryable — they mean bad credentials or permissions.
 fn is_retryable(e: &anyhow::Error) -> bool {
     let msg = e.to_string().to_lowercase();
+    // Non-retryable auth errors always take precedence
+    if msg.contains("401") || msg.contains("403") {
+        return false;
+    }
     msg.contains("429")
-        || msg.contains("503")
+        || msg.contains("500")
         || msg.contains("502")
+        || msg.contains("503")
         || msg.contains("rate limit")
         || msg.contains("timeout")
-        || msg.contains("connection")
+        || msg.contains("connection reset")
         || msg.contains("tls")
-            && !msg.contains("401")
-            && !msg.contains("403")
 }
 
 /// Create an LLM client from configuration.
@@ -52,6 +57,13 @@ pub fn create_llm_client(config: &BankConfig) -> anyhow::Result<LlmClient> {
         .or_else(|_| std::env::var("OPENAI_API_KEY"))
         .or_else(|_| std::env::var("DEEPSEEK_API_KEY"))
         .unwrap_or_default();
+
+    if api_key.is_empty() {
+        anyhow::bail!(
+            "No LLM API key found. Set DEEPSEEK_API_KEY or OPENAI_API_KEY, \
+             or add [llm].api_key to ~/.config/dentate/config.toml"
+        );
+    }
 
     let base_url = config
         .llm_base_url
