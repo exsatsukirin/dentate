@@ -5,6 +5,8 @@
 //!
 //! ## Quick start
 //!
+//! Requires a valid config at `~/.config/dentate/config.toml` with API keys.
+//!
 //! ```rust,no_run
 //! use dentate::MemoryBank;
 //!

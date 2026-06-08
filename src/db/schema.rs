@@ -3,15 +3,9 @@
 use rusqlite::Connection;
 
 /// Run schema migrations with the given embedding vector dimension.
-///
-/// The `vec_dim` must match the embedding model in use (1024 for DashScope,
-/// 1536 for OpenAI text-embedding-3-small, etc.). On first run the vec0 table
-/// is created with this dimension. On subsequent runs, if a vec0 table already
-/// exists, returns an error if the dimension doesn't match.
 pub fn migrate(conn: &Connection, vec_dim: usize) -> anyhow::Result<()> {
     conn.execute_batch(&format!(
         "
-        -- Memories table: stores all memory units
         CREATE TABLE IF NOT EXISTS memories (
             id          TEXT PRIMARY KEY,
             content     TEXT NOT NULL,
@@ -21,16 +15,11 @@ pub fn migrate(conn: &Connection, vec_dim: usize) -> anyhow::Result<()> {
             created_at  TEXT NOT NULL DEFAULT (datetime('now'))
         );
 
-        -- Full-text search index (FTS5) for keyword search
         CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
-            content,
-            fact,
-            context,
-            content='memories',
-            content_rowid='rowid'
+            content, fact, context,
+            content='memories', content_rowid='rowid'
         );
 
-        -- Triggers to keep FTS5 in sync with memories table
         CREATE TRIGGER IF NOT EXISTS memories_ai AFTER INSERT ON memories BEGIN
             INSERT INTO memories_fts(rowid, content, fact, context)
             VALUES (new.rowid, new.content, new.fact, new.context);
@@ -48,34 +37,42 @@ pub fn migrate(conn: &Connection, vec_dim: usize) -> anyhow::Result<()> {
             VALUES (new.rowid, new.content, new.fact, new.context);
         END;
 
-        -- Vector index for semantic search (sqlite-vec vec0 virtual table).
         CREATE VIRTUAL TABLE IF NOT EXISTS vec_memories USING vec0(
             embedding float[{vec_dim}]
         );
 
-        -- Trigger to clean up vec_memories when memories are deleted
         CREATE TRIGGER IF NOT EXISTS vec_memories_ad AFTER DELETE ON memories BEGIN
             DELETE FROM vec_memories WHERE rowid = old.rowid;
         END;
+
+        -- Own metadata table (don't rely on sqlite-vec internals)
+        CREATE TABLE IF NOT EXISTS dentate_meta (
+            key   TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
+
+        INSERT OR REPLACE INTO dentate_meta (key, value)
+        VALUES ('vec_dim', '{vec_dim}');
         ",
     ))?;
 
     // Verify dimension consistency on re-open
-    let existing_dim: Option<usize> = conn
+    let stored_dim: Option<String> = conn
         .query_row(
-            "SELECT dimension FROM vec_memories_dims LIMIT 1",
+            "SELECT value FROM dentate_meta WHERE key = 'vec_dim'",
             [],
-            |row| row.get::<_, i64>(0).map(|d| d as usize),
+            |row| row.get(0),
         )
         .ok();
 
-    if let Some(dim) = existing_dim
-        && dim != vec_dim
-    {
-        anyhow::bail!(
-            "vec_memories dimension mismatch: database has {dim}, config expects {vec_dim}. \
-             Either update the embedding model to match, or delete the database and re-create it."
-        );
+    if let Some(dim_str) = stored_dim {
+        let dim: usize = dim_str.parse().unwrap_or(0);
+        if dim != vec_dim && dim != 0 {
+            anyhow::bail!(
+                "vec_memories dimension mismatch: database has {dim}, config expects {vec_dim}. \
+                 Either update the embedding model to match, or delete the database and re-create it."
+            );
+        }
     }
 
     Ok(())

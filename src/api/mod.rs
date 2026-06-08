@@ -91,6 +91,14 @@ pub fn create_embeddings_client(
         .or_else(|_| std::env::var("OPENAI_API_KEY"))
         .unwrap_or_default();
 
+    if api_key.is_empty() {
+        anyhow::bail!(
+            "No embeddings API key found. Set OPENAI_API_KEY or add \
+             [embeddings].api_key to ~/.config/dentate/config.toml, \
+             or set provider = \"none\" to disable embeddings."
+        );
+    }
+
     let base_url = config
         .embedding_base_url
         .clone()

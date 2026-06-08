@@ -77,7 +77,17 @@ impl MemoryBank {
 
             // Insert embedding if available
             if let Some(ref emb_list) = embeddings {
-                let emb_json = serde_json::to_string(&emb_list[i])?;
+                let emb = &emb_list[i];
+                // Validate dimension matches schema
+                if emb.len() != self.config.vec_dim {
+                    anyhow::bail!(
+                        "Embedding dimension mismatch: model returned {}, config expects {}. \
+                         Check your embedding provider configuration.",
+                        emb.len(),
+                        self.config.vec_dim
+                    );
+                }
+                let emb_json = serde_json::to_string(emb)?;
                 db.execute(
                     "INSERT INTO vec_memories(rowid, embedding) VALUES (?1, ?2)",
                     rusqlite::params![rowid, emb_json],

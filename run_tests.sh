@@ -23,7 +23,6 @@ CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/dentate/config.toml"
 load_key_from_toml() {
     local section="$1" key="$2"
     if [ -f "$CONFIG_FILE" ]; then
-        # Simple TOML parser: find [section] then key = "value"
         awk -v sec="$section" -v k="$key" '
             $0 ~ "^\\[" sec "\\]" { in_sec=1; next }
             /^\[/ { in_sec=0 }
@@ -37,7 +36,7 @@ load_key_from_toml() {
     fi
 }
 
-# Load keys from config file if env vars not set
+# Load LLM key
 if [ -z "${DEEPSEEK_API_KEY:-}" ] && [ -z "${OPENAI_API_KEY:-}" ]; then
     KEY=$(load_key_from_toml "llm" "api_key")
     if [ -n "$KEY" ]; then
@@ -46,18 +45,16 @@ if [ -z "${DEEPSEEK_API_KEY:-}" ] && [ -z "${OPENAI_API_KEY:-}" ]; then
     fi
 fi
 
-# Embeddings key defaults to LLM key if not set separately
-if [ -z "${OPENAI_API_KEY:-}" ] && [ -n "${DEEPSEEK_API_KEY:-}" ]; then
+# Load embeddings key independently (not gated on LLM key)
+if [ -z "${OPENAI_API_KEY:-}" ]; then
     EMB_KEY=$(load_key_from_toml "embeddings" "api_key")
     if [ -n "$EMB_KEY" ]; then
         export OPENAI_API_KEY="$EMB_KEY"
         echo "Loaded OPENAI_API_KEY from $CONFIG_FILE"
-    else
-        export OPENAI_API_KEY="$DEEPSEEK_API_KEY"
-        echo "Using DEEPSEEK_API_KEY for embeddings"
     fi
 fi
 
+# Load Cohere key
 if [ -z "${COHERE_API_KEY:-}" ]; then
     COH_KEY=$(load_key_from_toml "reranker" "api_key")
     if [ -n "$COH_KEY" ]; then

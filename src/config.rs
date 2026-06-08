@@ -73,7 +73,7 @@ pub struct DatabaseSection {
 
 fn default_llm_provider() -> String { "deepseek".into() }
 fn default_llm_model() -> String { "deepseek-chat".into() }
-fn default_embedding_model() -> String { "text-embedding-3-small".into() }
+fn default_embedding_model() -> String { "text-embedding-v3".into() }
 fn default_reranker_model() -> String { "rerank-english-v3.0".into() }
 pub fn default_db_path() -> String {
     dirs::config_dir()
@@ -102,7 +102,7 @@ impl Default for EmbeddingsSection {
             provider: None,
             model: default_embedding_model(),
             api_key: None,
-            base_url: Some("https://api.openai.com/v1".into()),
+            base_url: Some("https://dashscope.aliyuncs.com/compatible-mode/v1".into()),
             dimensions: None,
         }
     }
@@ -207,7 +207,7 @@ mod tests {
         let c = Config::default();
         assert_eq!(c.llm.provider, "deepseek");
         assert_eq!(c.llm.model, "deepseek-chat");
-        assert_eq!(c.embeddings.model, "text-embedding-3-small");
+        assert_eq!(c.embeddings.model, "text-embedding-v3");
         assert!(c.database.path.ends_with("dentate.db"),
             "expected path ending with 'dentate.db', got: {}", c.database.path);
         assert!(!c.reranker.enabled);

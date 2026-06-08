@@ -14,8 +14,8 @@ impl SearchIndex {
         query: &str,
         limit: usize,
     ) -> anyhow::Result<Vec<(Memory, f32)>> {
-        let safe_query = query.replace(['"', '*'], "");
-        // Split into words for AND matching (not exact phrase)
+        let safe_query = query.replace(['"', '*', '(', ')', '+', '-', '^', '~'], " ");
+        // Tokenize: keep only alphanumeric + CJK characters as words
         let words: Vec<&str> = safe_query.split_whitespace().collect();
         let fts_query = if words.is_empty() {
             safe_query

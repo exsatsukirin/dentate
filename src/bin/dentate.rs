@@ -53,6 +53,15 @@ enum Command {
     },
     /// Show database statistics
     Stats,
+
+    /// List memories (optionally filtered by query)
+    List {
+        /// Optional search query to filter results
+        query: Option<String>,
+        /// Max results (default: 20)
+        #[arg(short, long, default_value = "20")]
+        limit: usize,
+    },
 }
 
 #[tokio::main]
@@ -124,6 +133,18 @@ async fn main() -> anyhow::Result<()> {
             let count = MemoryStore::count(&db)?;
             println!("Database: {}", bank.config().database_path);
             println!("Total memories: {}", count);
+        }
+        Command::List { query, limit } => {
+            let db = bank.db().lock().await;
+            let memories = MemoryStore::list(&db, query.as_deref(), limit, 0)?;
+            if memories.is_empty() {
+                println!("No memories found.");
+            } else {
+                for m in &memories {
+                    let fact = m.fact.as_deref().unwrap_or(&m.content);
+                    println!("  [{}] {}  ({})", &m.id[..8], fact, m.created_at.format("%Y-%m-%d"));
+                }
+            }
         }
     }
 
