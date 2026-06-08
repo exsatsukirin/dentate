@@ -44,8 +44,12 @@ pub fn migrate(conn: &Connection) -> anyhow::Result<()> {
             VALUES (new.rowid, new.content, new.fact, new.context);
         END;
 
-        -- Vector index for semantic search (dimensionality set at first insert)
-        -- sqlite-vec manages this virtual table; columns are auto-detected.
+        -- Vector index for semantic search (sqlite-vec vec0 virtual table).
+        -- Dimension 1024 matches DashScope text-embedding-v3 default.
+        -- For OpenAI text-embedding-3-small, change to float[1536].
+        CREATE VIRTUAL TABLE IF NOT EXISTS vec_memories USING vec0(
+            embedding float[1024]
+        );
         ",
     )?;
 

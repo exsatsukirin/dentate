@@ -43,10 +43,9 @@ fn require_both_keys() -> Option<(String, String)> {
 #[test]
 fn test_bank_open_and_config() {
     let config = make_config();
-    // We use a temp file since MemoryBank::with_config expects a path
-    // For now, just verify config construction
-    assert_eq!(config.llm_provider, "deepseek");
-    assert_eq!(config.llm_model, "deepseek-chat");
+    // Just verify the config loaded from file — model name varies by user config
+    assert!(!config.llm_model.is_empty());
+    assert!(!config.embedding_model.is_empty());
 }
 
 #[test]
@@ -128,10 +127,8 @@ async fn test_reflect_pipeline() {
 
     let db_path = temp_db_path();
 
-    let config = BankConfig {
-        database_path: db_path,
-        ..Default::default()
-    };
+    let mut config = make_config();
+    config.database_path = db_path;
     let bank = MemoryBank::with_config(config).expect("failed to open bank");
 
     // Store knowledge about Alice
@@ -166,12 +163,8 @@ async fn test_retain_without_fact_extraction() {
         return;
     }
 
-    let db_path = temp_db_path();
-
-    let config = BankConfig {
-        database_path: db_path,
-        ..Default::default()
-    };
+    let mut config = make_config();
+    config.database_path = temp_db_path();
     let bank = MemoryBank::with_config(config).expect("failed to open bank");
 
     // Retain without fact extraction

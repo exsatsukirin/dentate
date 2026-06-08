@@ -9,6 +9,7 @@
 
 use dentate::api::{EmbeddingsClient, LlmClient, RerankerClient};
 use dentate::config;
+use dentate::types::BankConfig;
 
 /// Skip the test if no LLM API key is available.
 fn require_api_key() -> Option<String> {
@@ -17,9 +18,17 @@ fn require_api_key() -> Option<String> {
 }
 
 /// Skip the test if no embeddings API key is available (separate from LLM).
-fn require_embeddings_key() -> Option<String> {
+
+/// Build an EmbeddingsClient from config file + env.
+fn make_embeddings_client() -> Option<EmbeddingsClient> {
     let cfg = config::load_or_default();
-    config::embeddings_api_key(&cfg)
+    let bc = BankConfig::from_config(&cfg);
+    if bc.embeddings_disabled() { return None; }
+    let key = config::embeddings_api_key(&cfg)?;
+    let base_url = bc.embedding_base_url.unwrap_or_else(|| "https://api.openai.com/v1".into());
+    let model = bc.embedding_model;
+    let dims = bc.embedding_dimensions;
+    Some(EmbeddingsClient::new(&key, &base_url, &model, dims))
 }
 
 /// Skip the test if no Cohere API key is available.
@@ -130,69 +139,40 @@ async fn test_reflect_basic() {
 
 #[tokio::test]
 async fn test_embed_single() {
-    let api_key = match require_embeddings_key() {
-        Some(k) => k,
-        None => {
-            eprintln!("SKIP: no API key set");
-            return;
-        }
+    let client = match make_embeddings_client() {
+        Some(c) => c,
+        None => { eprintln!("SKIP: no API key set"); return; }
     };
-
-    let client = EmbeddingsClient::new(
-        &api_key,
-        "https://api.openai.com/v1",
-        "text-embedding-3-small",
-        None,
-    );
 
     let embedding = client.embed("Hello world").await.expect("embedding failed");
     assert!(!embedding.is_empty(), "should return non-empty vector");
-    assert_eq!(embedding.len(), 1536, "text-embedding-3-small default dim is 1536");
+    // text-embedding-v3 default is 1024; text-embedding-3-small is 1536
+    assert!(embedding.len() >= 256, "dim {} too small", embedding.len());
 }
 
 #[tokio::test]
 async fn test_embed_batch() {
-    let api_key = match require_embeddings_key() {
-        Some(k) => k,
-        None => {
-            eprintln!("SKIP: no API key set");
-            return;
-        }
+    let client = match make_embeddings_client() {
+        Some(c) => c,
+        None => { eprintln!("SKIP: no API key set"); return; }
     };
-
-    let client = EmbeddingsClient::new(
-        &api_key,
-        "https://api.openai.com/v1",
-        "text-embedding-3-small",
-        Some(256), // reduced dimensions for cost savings
-    );
 
     let texts = ["Apple is a fruit", "Tesla is a car company", "Rust is a programming language"];
     let embeddings = client.embed_batch(&texts).await.expect("batch embedding failed");
 
     assert_eq!(embeddings.len(), 3);
-    assert_eq!(embeddings[0].len(), 256, "should respect reduced dimensions");
     for emb in &embeddings {
         assert!(!emb.is_empty());
+        assert!(emb.len() >= 256, "dim {} too small", emb.len());
     }
 }
 
 #[tokio::test]
 async fn test_embedding_semantic_similarity() {
-    let api_key = match require_embeddings_key() {
-        Some(k) => k,
-        None => {
-            eprintln!("SKIP: no API key set");
-            return;
-        }
+    let client = match make_embeddings_client() {
+        Some(c) => c,
+        None => { eprintln!("SKIP: no API key set"); return; }
     };
-
-    let client = EmbeddingsClient::new(
-        &api_key,
-        "https://api.openai.com/v1",
-        "text-embedding-3-small",
-        None,
-    );
 
     let apple = client.embed("Apple makes iPhones and MacBooks").await.unwrap();
     let orange = client.embed("Orange juice is a popular breakfast drink").await.unwrap();

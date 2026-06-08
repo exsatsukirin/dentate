@@ -76,9 +76,7 @@ impl SearchIndex {
             SELECT m.id, m.content, m.fact, m.context, m.metadata, m.created_at, v.distance
             FROM vec_memories v
             JOIN memories m ON m.rowid = v.rowid
-            WHERE v.embedding MATCH ?1
-            ORDER BY v.distance
-            LIMIT ?2
+            WHERE v.embedding MATCH ?1 AND k = ?2
         ";
 
         let mut stmt = conn.prepare(sql)?;
