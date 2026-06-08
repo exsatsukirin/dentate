@@ -4,6 +4,17 @@ use rusqlite::{params, Connection};
 
 use crate::types::Memory;
 
+/// FTS5-safe query: strip all special characters, keep only alphanumeric + CJK.
+pub fn sanitize_fts5_query(query: &str) -> String {
+    query
+        .chars()
+        .filter(|c| c.is_alphanumeric() || *c == ' ' || *c as u32 >= 0x4E00)
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" AND ")
+}
+
 /// Search index for vector + FTS5 queries.
 pub struct SearchIndex;
 
@@ -14,14 +25,7 @@ impl SearchIndex {
         query: &str,
         limit: usize,
     ) -> anyhow::Result<Vec<(Memory, f32)>> {
-        let safe_query = query.replace(['"', '*', '(', ')', '+', '-', '^', '~'], " ");
-        // Tokenize: keep only alphanumeric + CJK characters as words
-        let words: Vec<&str> = safe_query.split_whitespace().collect();
-        let fts_query = if words.is_empty() {
-            safe_query
-        } else {
-            words.join(" AND ")
-        };
+        let fts_query = sanitize_fts5_query(query);
 
         let sql = "
             SELECT m.id, m.content, m.fact, m.context, m.metadata, m.created_at,

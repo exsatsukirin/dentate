@@ -79,7 +79,7 @@ impl MemoryStore {
         offset: usize,
     ) -> anyhow::Result<Vec<Memory>> {
         let (sql, params): (String, Vec<Box<dyn rusqlite::types::ToSql>>) = if let Some(q) = query {
-            let fts = format!("\"{}\"", q.replace('"', ""));
+            let fts = crate::db::search::sanitize_fts5_query(q);
             (
                 "SELECT m.id, m.content, m.fact, m.context, m.metadata, m.created_at
                  FROM memories_fts f JOIN memories m ON m.rowid = f.rowid

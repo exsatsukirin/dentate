@@ -18,6 +18,9 @@
 .DS_Store
 Thumbs.db
 
+# Analysis
+CODE_REVIEW.md
+
 # Environment
 .env
 .api_key
