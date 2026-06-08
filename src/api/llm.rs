@@ -126,7 +126,8 @@ impl LlmClient {
             "You are a helpful assistant with access to the user's memory bank. ",
             "Answer the user's question based ONLY on the provided memories. ",
             "If the memories don't contain enough information, say so honestly. ",
-            "Cite memory numbers [1], [2], etc. when making claims."
+            "When referencing a memory, briefly quote or paraphrase the relevant fact ",
+            "rather than using citation numbers."
         );
 
         let user_prompt = format!("Memories:\n{}\n\nQuestion: {}", memories_text, query);

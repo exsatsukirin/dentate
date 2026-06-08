@@ -91,10 +91,18 @@ async fn main() -> anyhow::Result<()> {
             let strategy: SearchStrategy = strategy.parse().unwrap_or_default();
             let result = bank.recall(&query, limit, strategy).await?;
             println!("Found {} results (strategy: {:?}):", result.total_found, result.strategy_used);
-            for m in &result.memories {
-                let score = m.relevance_score.unwrap_or(0.0);
+
+            // Normalize scores: best match = 1.0
+            let max_score = result.memories
+                .iter()
+                .filter_map(|m| m.relevance_score)
+                .fold(1.0_f32, f32::max);
+
+            for (i, m) in result.memories.iter().enumerate() {
+                let raw = m.relevance_score.unwrap_or(0.0);
+                let normalized = if max_score > 0.0 { raw / max_score } else { raw };
                 let fact = m.fact.as_deref().unwrap_or(&m.content);
-                println!("  [{:.4}] {}", score, fact);
+                println!("  #{:<2} [{:.2}] {}", i + 1, normalized, fact);
             }
         }
         Command::Reflect { query } => {
