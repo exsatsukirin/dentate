@@ -4,11 +4,27 @@ use rusqlite::{params, Connection};
 
 use crate::types::Memory;
 
-/// FTS5-safe query: strip all special characters, keep only alphanumeric + CJK.
+/// FTS5-safe query: strip all special characters, keep alphanumeric + CJK/Kana/Hangul.
 pub fn sanitize_fts5_query(query: &str) -> String {
     query
         .chars()
-        .filter(|c| c.is_alphanumeric() || *c == ' ' || *c as u32 >= 0x4E00)
+        .filter(|c| {
+            let u = *c as u32;
+            c.is_alphanumeric()
+                || *c == ' '
+                || (0x3040..=0x30FF).contains(&u)   // Hiragana + Katakana
+                || (0x3400..=0x4DBF).contains(&u)   // CJK Extension A
+                || (0x4E00..=0x9FFF).contains(&u)   // CJK Unified Ideographs
+                || (0xAC00..=0xD7AF).contains(&u)   // Hangul
+                || (0xF900..=0xFAFF).contains(&u)   // CJK Compatibility
+                || (0xFF00..=0xFFEF).contains(&u)   // Fullwidth forms
+                || (0x20000..=0x2A6DF).contains(&u) // CJK Extension B
+                || (0x2A700..=0x2B73F).contains(&u) // CJK Extension C
+                || (0x2B740..=0x2B81F).contains(&u) // CJK Extension D
+                || (0x2B820..=0x2CEAF).contains(&u) // CJK Extension E
+                || (0x2CEB0..=0x2EBEF).contains(&u) // CJK Extension F
+                || u > 0x30000  // catch-all for large CJK extensions (G+, supplement)
+        })
         .collect::<String>()
         .split_whitespace()
         .collect::<Vec<_>>()

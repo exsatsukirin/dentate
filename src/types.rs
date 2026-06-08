@@ -89,7 +89,7 @@ impl BankConfig {
             unsafe { std::env::set_var("DENTATE_EMBEDDINGS_API_KEY", key); }
         }
 
-        let provider = cfg.embeddings.provider.clone().unwrap_or_else(|| "openai".into());
+        let provider = cfg.embeddings.provider.clone().unwrap_or_else(|| "dashscope".into());
         let emb_base = cfg.embeddings.base_url.clone().or_else(|| match provider.as_str() {
             "dashscope" => Some("https://dashscope.aliyuncs.com/compatible-mode/v1".into()),
             "zhipu" => Some("https://open.bigmodel.cn/api/paas/v4".into()),
