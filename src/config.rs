@@ -147,10 +147,10 @@ pub fn config_path() -> std::path::PathBuf {
 /// Checks env vars in order, then falls back to the config value.
 pub fn resolve_api_key(env_vars: &[&str], config_value: Option<&str>) -> Option<String> {
     for var in env_vars {
-        if let Ok(val) = std::env::var(var) {
-            if !val.is_empty() {
-                return Some(val);
-            }
+        if let Ok(val) = std::env::var(var)
+            && !val.is_empty()
+        {
+            return Some(val);
         }
     }
     config_value.filter(|v| !v.is_empty()).map(|v| v.to_string())

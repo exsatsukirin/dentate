@@ -50,15 +50,15 @@ fn test_bank_open_and_config() {
 
 #[test]
 fn test_search_strategy_parsing() {
-    assert_eq!(SearchStrategy::from_str("hybrid"), SearchStrategy::Hybrid);
-    assert_eq!(SearchStrategy::from_str("semantic"), SearchStrategy::Semantic);
-    assert_eq!(SearchStrategy::from_str("vector"), SearchStrategy::Semantic);
-    assert_eq!(SearchStrategy::from_str("keyword"), SearchStrategy::Keyword);
-    assert_eq!(SearchStrategy::from_str("fts"), SearchStrategy::Keyword);
-    assert_eq!(SearchStrategy::from_str("text"), SearchStrategy::Keyword);
+    let s: SearchStrategy = "hybrid".parse().unwrap(); assert_eq!(s, SearchStrategy::Hybrid);
+    let s: SearchStrategy = "semantic".parse().unwrap(); assert_eq!(s, SearchStrategy::Semantic);
+    let s: SearchStrategy = "vector".parse().unwrap(); assert_eq!(s, SearchStrategy::Semantic);
+    let s: SearchStrategy = "keyword".parse().unwrap(); assert_eq!(s, SearchStrategy::Keyword);
+    let s: SearchStrategy = "fts".parse().unwrap(); assert_eq!(s, SearchStrategy::Keyword);
+    let s: SearchStrategy = "text".parse().unwrap(); assert_eq!(s, SearchStrategy::Keyword);
     // Unknown defaults to Hybrid
-    assert_eq!(SearchStrategy::from_str("unknown"), SearchStrategy::Hybrid);
-    assert_eq!(SearchStrategy::from_str(""), SearchStrategy::Hybrid);
+    let s: SearchStrategy = "unknown".parse().unwrap(); assert_eq!(s, SearchStrategy::Hybrid);
+    let s: SearchStrategy = "".parse().unwrap(); assert_eq!(s, SearchStrategy::Hybrid);
     assert_eq!(SearchStrategy::default(), SearchStrategy::Hybrid);
 }
 
@@ -197,7 +197,7 @@ async fn test_retain_recall_no_embeddings() {
     })
     .expect("failed to open bank");
 
-    assert!(bank.has_embeddings() == false);
+    assert!(!bank.has_embeddings());
 
     // Retain
     bank.retain("Alice works at Google in Beijing", None, true)

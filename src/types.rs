@@ -40,13 +40,16 @@ pub enum SearchStrategy {
     Keyword,
 }
 
-impl SearchStrategy {
-    pub fn from_str(s: &str) -> Self {
-        match s.to_lowercase().as_str() {
+use std::str::FromStr;
+
+impl FromStr for SearchStrategy {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, ()> {
+        Ok(match s.to_lowercase().as_str() {
             "semantic" | "vector" => Self::Semantic,
             "keyword" | "fts" | "text" => Self::Keyword,
             _ => Self::Hybrid,
-        }
+        })
     }
 }
 

@@ -88,7 +88,7 @@ async fn main() -> anyhow::Result<()> {
         }
         Command::Recall { query, limit, strategy } => {
             tracing::info!("Searching: {}", query);
-            let strategy = SearchStrategy::from_str(&strategy);
+            let strategy: SearchStrategy = strategy.parse().unwrap_or_default();
             let result = bank.recall(&query, limit, strategy).await?;
             println!("Found {} results (strategy: {:?}):", result.total_found, result.strategy_used);
             for m in &result.memories {

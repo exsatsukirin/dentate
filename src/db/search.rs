@@ -14,8 +14,7 @@ impl SearchIndex {
         query: &str,
         limit: usize,
     ) -> anyhow::Result<Vec<(Memory, f32)>> {
-        // Escape FTS5 query syntax
-        let safe_query = query.replace('"', "").replace('*', "");
+        let safe_query = query.replace(['"', '*'], "");
         let fts_query = format!("\"{}\"", safe_query);
 
         let sql = "
@@ -37,14 +36,14 @@ impl SearchIndex {
                 context: row.get("context")?,
                 metadata: row
                     .get::<_, String>("metadata")
-                    .and_then(|s| Ok(serde_json::from_str(&s).unwrap_or_default()))
+                    .map(|s| serde_json::from_str(&s).unwrap_or_default())
                     .unwrap_or_default(),
                 created_at: row
                     .get::<_, String>("created_at")
-                    .and_then(|s| {
-                        Ok(chrono::DateTime::parse_from_rfc3339(&s)
+                    .map(|s| {
+                        chrono::DateTime::parse_from_rfc3339(&s)
                             .map(|dt| dt.with_timezone(&chrono::Utc))
-                            .unwrap_or_default())
+                            .unwrap_or_default()
                     })
                     .unwrap_or_default(),
                 relevance_score: Some(0.0),
@@ -61,15 +60,11 @@ impl SearchIndex {
     }
 
     /// Vector similarity search using sqlite-vec.
-    ///
-    /// The `embedding` should be a slice of f32 values.
-    /// The `embedding_dim` must match the dimension stored in the vec0 table.
     pub fn vector_search(
         conn: &Connection,
         embedding: &[f32],
         limit: usize,
     ) -> anyhow::Result<Vec<(Memory, f32)>> {
-        // Serialize embedding as JSON array for sqlite-vec
         let embedding_json = serde_json::to_string(embedding)?;
 
         let sql = "
@@ -82,26 +77,25 @@ impl SearchIndex {
         let mut stmt = conn.prepare(sql)?;
         let rows = stmt.query_map(params![embedding_json, limit as i64], |row| {
             let memory = Memory {
-                id: row.get(0)?,
-                content: row.get(1)?,
-                fact: row.get(2)?,
-                context: row.get(3)?,
+                id: row.get("id")?,
+                content: row.get("content")?,
+                fact: row.get("fact")?,
+                context: row.get("context")?,
                 metadata: row
-                    .get::<_, String>(4)
-                    .and_then(|s| Ok(serde_json::from_str(&s).unwrap_or_default()))
+                    .get::<_, String>("metadata")
+                    .map(|s| serde_json::from_str(&s).unwrap_or_default())
                     .unwrap_or_default(),
                 created_at: row
-                    .get::<_, String>(5)
-                    .and_then(|s| {
-                        Ok(chrono::DateTime::parse_from_rfc3339(&s)
+                    .get::<_, String>("created_at")
+                    .map(|s| {
+                        chrono::DateTime::parse_from_rfc3339(&s)
                             .map(|dt| dt.with_timezone(&chrono::Utc))
-                            .unwrap_or_default())
+                            .unwrap_or_default()
                     })
                     .unwrap_or_default(),
                 relevance_score: Some(0.0),
             };
-            let distance: f64 = row.get(6)?;
-            // Convert distance to relevance score (1.0 = perfect match)
+            let distance: f64 = row.get("distance")?;
             let relevance = 1.0 / (1.0 + distance as f32);
             Ok((memory, relevance))
         })?;
@@ -114,8 +108,6 @@ impl SearchIndex {
     }
 
     /// Reciprocal Rank Fusion: merge results from multiple search strategies.
-    ///
-    /// `k` is a constant (typically 60) that controls the influence of rank position.
     pub fn fuse(
         results: &[Vec<(Memory, f32)>],
         k: f32,
@@ -141,7 +133,6 @@ impl SearchIndex {
         fused.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
         fused.truncate(final_limit);
 
-        // Update relevance scores
         for (memory, score) in &mut fused {
             memory.relevance_score = Some(*score);
         }

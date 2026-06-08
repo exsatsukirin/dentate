@@ -39,14 +39,14 @@ impl MemoryStore {
                 context: row.get("context")?,
                 metadata: row
                     .get::<_, String>("metadata")
-                    .and_then(|s| Ok(serde_json::from_str(&s).unwrap_or_default()))
+                    .map(|s| serde_json::from_str(&s).unwrap_or_default())
                     .unwrap_or_default(),
                 created_at: row
                     .get::<_, String>("created_at")
-                    .and_then(|s| {
-                        Ok(chrono::DateTime::parse_from_rfc3339(&s)
+                    .map(|s| {
+                        chrono::DateTime::parse_from_rfc3339(&s)
                             .map(|dt| dt.with_timezone(&chrono::Utc))
-                            .unwrap_or_default())
+                            .unwrap_or_default()
                     })
                     .unwrap_or_default(),
                 relevance_score: None,

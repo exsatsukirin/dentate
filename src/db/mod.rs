@@ -17,7 +17,14 @@ pub use search::SearchIndex;
 pub fn open(path: &str) -> anyhow::Result<Connection> {
     // Register sqlite-vec as an auto-extension (loaded for every new connection)
     unsafe {
-        sqlite3_auto_extension(Some(std::mem::transmute(sqlite3_vec_init as *const ())));
+        sqlite3_auto_extension(Some(std::mem::transmute::<
+            *const (),
+            unsafe extern "C" fn(
+                *mut rusqlite::ffi::sqlite3,
+                *mut *mut i8,
+                *const rusqlite::ffi::sqlite3_api_routines,
+            ) -> i32,
+        >(sqlite3_vec_init as *const ())));
     }
 
     let conn = Connection::open(path)?;
@@ -36,7 +43,14 @@ pub fn open(path: &str) -> anyhow::Result<Connection> {
 /// Registers sqlite-vec auto-extension and runs migrations.
 pub fn open_in_memory() -> anyhow::Result<Connection> {
     unsafe {
-        sqlite3_auto_extension(Some(std::mem::transmute(sqlite3_vec_init as *const ())));
+        sqlite3_auto_extension(Some(std::mem::transmute::<
+            *const (),
+            unsafe extern "C" fn(
+                *mut rusqlite::ffi::sqlite3,
+                *mut *mut i8,
+                *const rusqlite::ffi::sqlite3_api_routines,
+            ) -> i32,
+        >(sqlite3_vec_init as *const ())));
     }
     let conn = Connection::open_in_memory()?;
     conn.execute_batch("PRAGMA foreign_keys=ON;")?;
@@ -51,7 +65,14 @@ mod tests {
     #[test]
     fn test_open_in_memory() {
         unsafe {
-            sqlite3_auto_extension(Some(std::mem::transmute(sqlite3_vec_init as *const ())));
+            sqlite3_auto_extension(Some(std::mem::transmute::<
+                *const (),
+                unsafe extern "C" fn(
+                    *mut rusqlite::ffi::sqlite3,
+                    *mut *mut i8,
+                    *const rusqlite::ffi::sqlite3_api_routines,
+                ) -> i32,
+            >(sqlite3_vec_init as *const ())));
         }
         let conn = Connection::open_in_memory().unwrap();
         conn.execute_batch("PRAGMA foreign_keys=ON;").unwrap();
