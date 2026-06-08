@@ -184,3 +184,58 @@ async fn test_retain_without_fact_extraction() {
     assert_eq!(memories[0].fact.as_deref(), Some("Raw content without fact extraction"));
     assert_eq!(memories[0].content, "Raw content without fact extraction");
 }
+
+// ============================================================
+// No-embedding mode tests (only requires LLM key)
+// ============================================================
+
+#[tokio::test]
+async fn test_retain_recall_no_embeddings() {
+    let cfg = config::load_or_default();
+    let llm_key = config::llm_api_key(&cfg);
+    if llm_key.is_none() {
+        eprintln!("SKIP: no API key set");
+        return;
+    }
+
+    let bank = MemoryBank::with_config(BankConfig {
+        embedding_provider: "none".into(),
+        ..make_config()
+    })
+    .expect("failed to open bank");
+
+    assert!(bank.has_embeddings() == false);
+
+    // Retain
+    bank.retain("Alice works at Google in Beijing", None, true)
+        .await
+        .expect("retain failed");
+    bank.retain("Bob works at Apple in Shanghai", None, true)
+        .await
+        .expect("retain failed");
+
+    // Recall with keyword (only strategy available)
+    let results = bank
+        .recall("Google", 5, SearchStrategy::Keyword)
+        .await
+        .expect("recall failed");
+
+    assert!(!results.memories.is_empty());
+    assert_eq!(results.strategy_used, SearchStrategy::Keyword);
+
+    // Hybrid falls back to keyword automatically
+    let results = bank
+        .recall("Apple Shanghai", 5, SearchStrategy::Hybrid)
+        .await
+        .expect("recall failed");
+    assert_eq!(results.strategy_used, SearchStrategy::Keyword);
+}
+
+#[test]
+fn test_embeddings_disabled_flag() {
+    let mut cfg = BankConfig::default();
+    assert!(!cfg.embeddings_disabled());
+
+    cfg.embedding_provider = "none".into();
+    assert!(cfg.embeddings_disabled());
+}

@@ -45,6 +45,8 @@ pub struct LlmSection {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct EmbeddingsSection {
+    #[serde(default)]
+    pub provider: Option<String>,
     #[serde(default = "default_embedding_model")]
     pub model: String,
     pub api_key: Option<String>,
@@ -89,6 +91,7 @@ impl Default for LlmSection {
 impl Default for EmbeddingsSection {
     fn default() -> Self {
         Self {
+            provider: None,
             model: default_embedding_model(),
             api_key: None,
             base_url: Some("https://api.openai.com/v1".into()),

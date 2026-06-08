@@ -30,19 +30,28 @@ pub fn create_llm_client(config: &BankConfig) -> anyhow::Result<LlmClient> {
 }
 
 /// Create an embeddings client from configuration.
-pub fn create_embeddings_client(config: &BankConfig) -> anyhow::Result<EmbeddingsClient> {
+///
+/// Returns `Ok(None)` when `embedding_provider` is `"none"`.
+pub fn create_embeddings_client(
+    config: &BankConfig,
+) -> anyhow::Result<Option<EmbeddingsClient>> {
+    if config.embeddings_disabled() {
+        return Ok(None);
+    }
+
     let api_key = std::env::var("DENTATE_EMBEDDINGS_API_KEY")
         .or_else(|_| std::env::var("OPENAI_API_KEY"))
         .unwrap_or_default();
 
-    // Embeddings always use OpenAI (or compatible) endpoint
-    let base_url = std::env::var("DENTATE_EMBEDDINGS_BASE_URL")
-        .unwrap_or_else(|_| "https://api.openai.com/v1".to_string());
+    let base_url = config
+        .embedding_base_url
+        .clone()
+        .unwrap_or_else(|| "https://api.openai.com/v1".into());
 
-    Ok(EmbeddingsClient::new(
+    Ok(Some(EmbeddingsClient::new(
         &api_key,
         &base_url,
         &config.embedding_model,
         config.embedding_dimensions,
-    ))
+    )))
 }
