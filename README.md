@@ -6,17 +6,6 @@ A lightweight, agent-native memory system — the dentate gyrus for your AI agen
 
 Named after the **dentate gyrus**, the part of the hippocampus responsible for pattern separation — distinguishing similar memories from one another.
 
-## Why Dentate?
-
-| | Hindsight (original) | Dentate |
-|---|---|---|
-| Runtime | FastAPI server | Single binary / library |
-| Database | PostgreSQL + pgvector | SQLite (single file) |
-| Memory usage | ~2 GB | ~8 MB |
-| Embeddings | Local PyTorch models | OpenAI API |
-| Reranker | Local CrossEncoder | Optional Cohere API |
-| Deployment | Docker / pip + venv | `cargo install` or download binary |
-
 ## Quick Start
 
 ### CLI
