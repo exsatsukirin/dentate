@@ -1,0 +1,46 @@
+[package]
+name = "dentate"
+version = "0.1.0"
+edition = "2024"
+description = "A lightweight, agent-native memory system — the dentate gyrus for your AI agents. No server, no local models, just SQLite + API calls."
+license = "MIT"
+repository = "https://github.com/exsatsukirin/dentate"
+readme = "README.md"
+keywords = ["ai", "agent", "memory", "llm", "rag", "vector-search"]
+categories = ["development-tools", "command-line-utilities"]
+
+[dependencies]
+# ---- 数据库 ----
+rusqlite = { version = "0.40", features = ["bundled", "vtab", "column_decltype", "load_extension"] }
+sqlite-vec = "0.1"
+
+# ---- HTTP 客户端 ----
+reqwest = { version = "0.13", features = ["json", "rustls"], default-features = false }
+
+# ---- Token 计数 ----
+tiktoken-rs = "0.12"
+
+# ---- 序列化 ----
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# ---- 异步运行时 ----
+tokio = { version = "1", features = ["full"] }
+
+# ---- 工具 ----
+clap = { version = "4", features = ["derive", "env"] }
+anyhow = "1"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = "z"
+strip = true
+
+[profile.dev]
+opt-level = 1
