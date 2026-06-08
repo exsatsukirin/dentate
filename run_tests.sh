@@ -1,37 +1,79 @@
 #!/bin/bash
 # Run integration tests that require API keys.
 #
+# Keys are loaded from ~/.config/dentate/config.toml:
+#
+#   [llm]
+#   api_key = "sk-xxx"
+#
+#   [embeddings]
+#   api_key = "sk-xxx"      # defaults to llm.api_key
+#
+# Or set environment variables: DEEPSEEK_API_KEY, OPENAI_API_KEY, COHERE_API_KEY
+#
 # Usage:
-#   # Option 1: write key to ~/.dentate/api_key (one-time)
-#   mkdir -p ~/.dentate
-#   echo "sk-your-deepseek-key" > ~/.dentate/api_key
-#   chmod 600 ~/.dentate/api_key
-#   ./run_tests.sh
-#
-#   # Option 2: export directly
-#   DEEPSEEK_API_KEY=sk-xxx ./run_tests.sh
-#
-#   # Option 3: pass specific test
-#   ./run_tests.sh api_tests
+#   ./run_tests.sh              # all tests
+#   ./run_tests.sh api_tests    # specific test
 #   ./run_tests.sh e2e_tests
-#   ./run_tests.sh ""  # run all
 
 set -euo pipefail
 
-# Load key from file if env var not set
+CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/dentate/config.toml"
+
+load_key_from_toml() {
+    local section="$1" key="$2"
+    if [ -f "$CONFIG_FILE" ]; then
+        # Simple TOML parser: find [section] then key = "value"
+        awk -v sec="$section" -v k="$key" '
+            $0 ~ "^\\[" sec "\\]" { in_sec=1; next }
+            /^\[/ { in_sec=0 }
+            in_sec && $1 == k {
+                gsub(/^[^=]*= *"?/, "")
+                gsub(/"$/, "")
+                print
+                exit
+            }
+        ' "$CONFIG_FILE"
+    fi
+}
+
+# Load keys from config file if env vars not set
 if [ -z "${DEEPSEEK_API_KEY:-}" ] && [ -z "${OPENAI_API_KEY:-}" ]; then
-    for keyfile in ~/.dentate/api_key tests/.api_key .api_key; do
-        if [ -f "$keyfile" ]; then
-            export DEEPSEEK_API_KEY=$(head -1 "$keyfile" | tr -d '\n')
-            echo "Loaded API key from $keyfile"
-            break
-        fi
-    done
+    KEY=$(load_key_from_toml "llm" "api_key")
+    if [ -n "$KEY" ]; then
+        export DEEPSEEK_API_KEY="$KEY"
+        echo "Loaded DEEPSEEK_API_KEY from $CONFIG_FILE"
+    fi
+fi
+
+# Embeddings key defaults to LLM key if not set separately
+if [ -z "${OPENAI_API_KEY:-}" ] && [ -n "${DEEPSEEK_API_KEY:-}" ]; then
+    EMB_KEY=$(load_key_from_toml "embeddings" "api_key")
+    if [ -n "$EMB_KEY" ]; then
+        export OPENAI_API_KEY="$EMB_KEY"
+        echo "Loaded OPENAI_API_KEY from $CONFIG_FILE"
+    else
+        export OPENAI_API_KEY="$DEEPSEEK_API_KEY"
+        echo "Using DEEPSEEK_API_KEY for embeddings"
+    fi
+fi
+
+if [ -z "${COHERE_API_KEY:-}" ]; then
+    COH_KEY=$(load_key_from_toml "reranker" "api_key")
+    if [ -n "$COH_KEY" ]; then
+        export COHERE_API_KEY="$COH_KEY"
+        echo "Loaded COHERE_API_KEY from $CONFIG_FILE"
+    fi
 fi
 
 if [ -z "${DEEPSEEK_API_KEY:-}" ] && [ -z "${OPENAI_API_KEY:-}" ]; then
-    echo "No API key found. Set DEEPSEEK_API_KEY or OPENAI_API_KEY,"
-    echo "or create ~/.dentate/api_key with your key."
+    echo "No API key found."
+    echo "Either create $CONFIG_FILE with [llm] api_key,"
+    echo "or set DEEPSEEK_API_KEY / OPENAI_API_KEY environment variable."
+    echo ""
+    echo "Example $CONFIG_FILE:"
+    echo '  [llm]'
+    echo '  api_key = "sk-xxx"'
     exit 1
 fi
 

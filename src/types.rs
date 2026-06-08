@@ -92,6 +92,32 @@ pub struct BankConfig {
     pub enable_reranker: bool,
 }
 
+impl BankConfig {
+    /// Create a BankConfig from the config file, merging with env var overrides.
+    pub fn from_config(cfg: &crate::config::Config) -> Self {
+        let llm_key = crate::config::llm_api_key(cfg);
+        let emb_key = crate::config::embeddings_api_key(cfg);
+
+        // Set key as env var so API clients pick it up (avoids threading keys through)
+        if let Some(ref key) = llm_key {
+            unsafe { std::env::set_var("DENTATE_LLM_API_KEY", key); }
+        }
+        if let Some(ref key) = emb_key {
+            unsafe { std::env::set_var("DENTATE_EMBEDDINGS_API_KEY", key); }
+        }
+
+        Self {
+            database_path: cfg.database.path.clone(),
+            llm_provider: cfg.llm.provider.clone(),
+            llm_model: cfg.llm.model.clone(),
+            llm_base_url: cfg.llm.base_url.clone(),
+            embedding_model: cfg.embeddings.model.clone(),
+            embedding_dimensions: cfg.embeddings.dimensions,
+            enable_reranker: cfg.reranker.enabled,
+        }
+    }
+}
+
 impl Default for BankConfig {
     fn default() -> Self {
         Self {

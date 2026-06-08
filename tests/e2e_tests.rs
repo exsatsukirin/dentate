@@ -6,6 +6,7 @@
 use std::env::temp_dir;
 use std::sync::atomic::{AtomicU32, Ordering};
 
+use dentate::config;
 use dentate::engine::MemoryBank;
 use dentate::types::{BankConfig, SearchStrategy};
 
@@ -22,16 +23,15 @@ fn temp_db_path() -> String {
 }
 
 fn make_config() -> BankConfig {
-    BankConfig {
-        database_path: ":memory:".into(),
-        ..Default::default()
-    }
+    let cfg = config::load_or_default();
+    let mut bc = BankConfig::from_config(&cfg);
+    bc.database_path = temp_db_path();
+    bc
 }
 
 fn require_api_key() -> Option<String> {
-    std::env::var("OPENAI_API_KEY")
-        .or_else(|_| std::env::var("DEEPSEEK_API_KEY"))
-        .ok()
+    let cfg = config::load_or_default();
+    config::llm_api_key(&cfg)
 }
 
 // ============================================================
@@ -75,14 +75,7 @@ async fn test_retain_and_recall_hybrid() {
         }
     };
 
-    // Use a temp file for the database
-    let db_path = temp_db_path();
-
-    let config = BankConfig {
-        database_path: db_path,
-        ..Default::default()
-    };
-    let bank = MemoryBank::with_config(config).expect("failed to open bank");
+    let bank = MemoryBank::with_config(make_config()).expect("failed to open bank");
 
     // Retain some memories
     bank.retain("Alice works at Google in Beijing as a software engineer", None, true)

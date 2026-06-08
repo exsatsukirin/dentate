@@ -8,17 +8,18 @@
 //!   COHERE_API_KEY                          — for Reranker tests (optional)
 
 use dentate::api::{EmbeddingsClient, LlmClient, RerankerClient};
+use dentate::config;
 
 /// Skip the test if no LLM API key is available.
 fn require_api_key() -> Option<String> {
-    std::env::var("OPENAI_API_KEY")
-        .or_else(|_| std::env::var("DEEPSEEK_API_KEY"))
-        .ok()
+    let cfg = config::load_or_default();
+    config::llm_api_key(&cfg)
 }
 
 /// Skip the test if no Cohere API key is available.
 fn require_cohere_key() -> Option<String> {
-    std::env::var("COHERE_API_KEY").ok()
+    let cfg = config::load_or_default();
+    config::cohere_api_key(&cfg)
 }
 
 // ============================================================
