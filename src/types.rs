@@ -98,10 +98,11 @@ impl BankConfig {
         let llm_key = crate::config::llm_api_key(cfg);
         let emb_key = crate::config::embeddings_api_key(cfg);
 
-        // Set key as env var so API clients pick it up (avoids threading keys through)
+        // Set LLM key as env var so API clients pick it up
         if let Some(ref key) = llm_key {
             unsafe { std::env::set_var("DENTATE_LLM_API_KEY", key); }
         }
+        // Only set embeddings key if explicitly configured (don't reuse LLM key)
         if let Some(ref key) = emb_key {
             unsafe { std::env::set_var("DENTATE_EMBEDDINGS_API_KEY", key); }
         }

@@ -29,9 +29,11 @@ fn make_config() -> BankConfig {
     bc
 }
 
-fn require_api_key() -> Option<String> {
+fn require_both_keys() -> Option<(String, String)> {
     let cfg = config::load_or_default();
-    config::llm_api_key(&cfg)
+    let llm = config::llm_api_key(&cfg)?;
+    let emb = config::embeddings_api_key(&cfg)?;
+    Some((llm, emb))
 }
 
 // ============================================================
@@ -67,13 +69,11 @@ fn test_search_strategy_parsing() {
 
 #[tokio::test]
 async fn test_retain_and_recall_hybrid() {
-    let api_key = match require_api_key() {
-        Some(k) => k,
-        None => {
-            eprintln!("SKIP: no API key set (set DEEPSEEK_API_KEY or OPENAI_API_KEY)");
-            return;
-        }
-    };
+    let _keys = require_both_keys();
+    if _keys.is_none() {
+        eprintln!("SKIP: no API key set");
+        return;
+    }
 
     let bank = MemoryBank::with_config(make_config()).expect("failed to open bank");
 
@@ -120,13 +120,11 @@ async fn test_retain_and_recall_hybrid() {
 
 #[tokio::test]
 async fn test_reflect_pipeline() {
-    let api_key = match require_api_key() {
-        Some(k) => k,
-        None => {
-            eprintln!("SKIP: no API key set");
-            return;
-        }
-    };
+    let _keys = require_both_keys();
+    if _keys.is_none() {
+        eprintln!("SKIP: no API key set");
+        return;
+    }
 
     let db_path = temp_db_path();
 
@@ -162,13 +160,11 @@ async fn test_reflect_pipeline() {
 
 #[tokio::test]
 async fn test_retain_without_fact_extraction() {
-    let api_key = match require_api_key() {
-        Some(k) => k,
-        None => {
-            eprintln!("SKIP: no API key set");
-            return;
-        }
-    };
+    let _keys = require_both_keys();
+    if _keys.is_none() {
+        eprintln!("SKIP: no API key set");
+        return;
+    }
 
     let db_path = temp_db_path();
 

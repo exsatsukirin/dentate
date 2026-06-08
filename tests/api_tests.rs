@@ -16,6 +16,12 @@ fn require_api_key() -> Option<String> {
     config::llm_api_key(&cfg)
 }
 
+/// Skip the test if no embeddings API key is available (separate from LLM).
+fn require_embeddings_key() -> Option<String> {
+    let cfg = config::load_or_default();
+    config::embeddings_api_key(&cfg)
+}
+
 /// Skip the test if no Cohere API key is available.
 fn require_cohere_key() -> Option<String> {
     let cfg = config::load_or_default();
@@ -124,7 +130,7 @@ async fn test_reflect_basic() {
 
 #[tokio::test]
 async fn test_embed_single() {
-    let api_key = match require_api_key() {
+    let api_key = match require_embeddings_key() {
         Some(k) => k,
         None => {
             eprintln!("SKIP: no API key set");
@@ -146,7 +152,7 @@ async fn test_embed_single() {
 
 #[tokio::test]
 async fn test_embed_batch() {
-    let api_key = match require_api_key() {
+    let api_key = match require_embeddings_key() {
         Some(k) => k,
         None => {
             eprintln!("SKIP: no API key set");
@@ -173,7 +179,7 @@ async fn test_embed_batch() {
 
 #[tokio::test]
 async fn test_embedding_semantic_similarity() {
-    let api_key = match require_api_key() {
+    let api_key = match require_embeddings_key() {
         Some(k) => k,
         None => {
             eprintln!("SKIP: no API key set");

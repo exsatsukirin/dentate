@@ -154,12 +154,13 @@ pub fn llm_api_key(config: &Config) -> Option<String> {
 }
 
 /// Convenience: get the embeddings API key from env or config.
+///
+/// Does NOT fall back to LLM key — embeddings use a different service.
 pub fn embeddings_api_key(config: &Config) -> Option<String> {
     resolve_api_key(
         &["DENTATE_EMBEDDINGS_API_KEY", "OPENAI_API_KEY"],
         config.embeddings.api_key.as_deref(),
     )
-    .or_else(|| llm_api_key(config))
 }
 
 /// Convenience: get the Cohere API key from env or config.
