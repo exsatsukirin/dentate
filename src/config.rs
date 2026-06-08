@@ -75,7 +75,7 @@ fn default_llm_provider() -> String { "deepseek".into() }
 fn default_llm_model() -> String { "deepseek-chat".into() }
 fn default_embedding_model() -> String { "text-embedding-3-small".into() }
 fn default_reranker_model() -> String { "rerank-english-v3.0".into() }
-fn default_db_path() -> String {
+pub fn default_db_path() -> String {
     dirs::config_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))
         .join("dentate")
@@ -214,7 +214,7 @@ mod tests {
     }
 
     #[test]
-    fn test_resolve_api_key_env_first() {
+    fn test_resolve_api_key_fallback_to_config() {
         // Config has a key, but env var should take precedence
         let result = resolve_api_key(
             &["NONEXISTENT_VAR_12345"],

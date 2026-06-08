@@ -31,16 +31,16 @@ impl SearchIndex {
         let mut stmt = conn.prepare(sql)?;
         let rows = stmt.query_map(params![fts_query, limit as i64], |row| {
             let memory = Memory {
-                id: row.get(0)?,
-                content: row.get(1)?,
-                fact: row.get(2)?,
-                context: row.get(3)?,
+                id: row.get("id")?,
+                content: row.get("content")?,
+                fact: row.get("fact")?,
+                context: row.get("context")?,
                 metadata: row
-                    .get::<_, String>(4)
+                    .get::<_, String>("metadata")
                     .and_then(|s| Ok(serde_json::from_str(&s).unwrap_or_default()))
                     .unwrap_or_default(),
                 created_at: row
-                    .get::<_, String>(5)
+                    .get::<_, String>("created_at")
                     .and_then(|s| {
                         Ok(chrono::DateTime::parse_from_rfc3339(&s)
                             .map(|dt| dt.with_timezone(&chrono::Utc))
@@ -49,7 +49,7 @@ impl SearchIndex {
                     .unwrap_or_default(),
                 relevance_score: Some(0.0),
             };
-            let score: f64 = row.get(6)?;
+            let score: f64 = row.get("score")?;
             Ok((memory, score as f32))
         })?;
 

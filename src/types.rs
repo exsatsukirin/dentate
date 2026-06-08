@@ -112,14 +112,15 @@ impl BankConfig {
 
 impl Default for BankConfig {
     fn default() -> Self {
+        let db = crate::config::default_db_path();
         Self {
-            database_path: "dentate.db".into(),
+            database_path: db,
             llm_provider: "deepseek".into(),
-            llm_model: "deepseek-chat".into(),
+            llm_model: "deepseek-v4-flash".into(),
             llm_base_url: Some("https://api.deepseek.com/v1".into()),
-            embedding_provider: "openai".into(),
-            embedding_model: "text-embedding-3-small".into(),
-            embedding_base_url: Some("https://api.openai.com/v1".into()),
+            embedding_provider: "dashscope".into(),
+            embedding_model: "text-embedding-v3".into(),
+            embedding_base_url: Some("https://dashscope.aliyuncs.com/compatible-mode/v1".into()),
             embedding_dimensions: None,
             enable_reranker: false,
         }

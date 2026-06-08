@@ -29,7 +29,6 @@ pub mod api;
 pub mod config;
 pub mod db;
 pub mod engine;
-pub mod error;
 pub mod types;
 
 // Re-export the main types for convenience

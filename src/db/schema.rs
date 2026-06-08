@@ -13,8 +13,7 @@ pub fn migrate(conn: &Connection) -> anyhow::Result<()> {
             fact        TEXT,
             context     TEXT,
             metadata    TEXT NOT NULL DEFAULT '{}',
-            created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-            updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+            created_at  TEXT NOT NULL DEFAULT (datetime('now'))
         );
 
         -- Full-text search index (FTS5) for keyword search

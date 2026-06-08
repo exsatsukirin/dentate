@@ -164,19 +164,26 @@ impl LlmClient {
     ) -> anyhow::Result<(String, crate::types::TokenUsage)> {
         let url = format!("{}/chat/completions", self.base_url);
 
-        let response = self
-            .client
-            .post(&url)
-            .header("Authorization", format!("Bearer {}", self.api_key))
-            .json(request)
-            .send()
-            .await?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let text = response.text().await.unwrap_or_default();
-            anyhow::bail!("LLM API error ({}): {}", status, text);
-        }
+        let response = crate::api::retry_with_backoff(
+            || async {
+                let resp = self
+                    .client
+                    .post(&url)
+                    .header("Authorization", format!("Bearer {}", self.api_key))
+                    .json(request)
+                    .send()
+                    .await
+                    .map_err(|e| anyhow::anyhow!(e))?;
+                if !resp.status().is_success() {
+                    let status = resp.status();
+                    let text = resp.text().await.unwrap_or_default();
+                    anyhow::bail!("LLM API error ({}): {}", status, text);
+                }
+                Ok(resp)
+            },
+            3,
+        )
+        .await?;
 
         let result: ChatResponse = response.json().await?;
 
