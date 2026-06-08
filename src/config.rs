@@ -75,7 +75,15 @@ fn default_llm_provider() -> String { "deepseek".into() }
 fn default_llm_model() -> String { "deepseek-chat".into() }
 fn default_embedding_model() -> String { "text-embedding-3-small".into() }
 fn default_reranker_model() -> String { "rerank-english-v3.0".into() }
-fn default_db_path() -> String { "dentate.db".into() }
+fn default_db_path() -> String {
+    dirs::config_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("dentate")
+        .join("dentate.db")
+        .to_str()
+        .unwrap_or("dentate.db")
+        .to_string()
+}
 
 impl Default for LlmSection {
     fn default() -> Self {
