@@ -8,28 +8,56 @@ Named after the **dentate gyrus**, the part of the hippocampus responsible for p
 
 ## Quick Start
 
-### CLI
+### 1. Create config file
 
 ```bash
-# Set your API key
-export DEEPSEEK_API_KEY=sk-xxx
-# or
-export OPENAI_API_KEY=sk-xxx
+mkdir -p ~/.config/dentate
+```
 
+`~/.config/dentate/config.toml`:
+
+```toml
+[llm]
+provider = "deepseek"
+model = "deepseek-v4-flash"
+api_key = "sk-xxx"
+base_url = "https://api.deepseek.com/v1"
+
+[embeddings]
+# Use "dashscope" for 阿里百炼, "openai" for OpenAI, "none" to disable
+provider = "dashscope"
+model = "text-embedding-v3"
+api_key = "sk-xxx"
+
+[database]
+path = "dentate.db"
+```
+
+### 2. Build
+
+```bash
+git clone https://github.com/exsatsukirin/dentate.git
+cd dentate
+cargo build --release
+```
+
+### 3. Use
+
+```bash
 # Store a memory
-dentate retain "Alice works at Google as a senior software engineer"
+./target/release/dentate retain "Alice works at Google as a senior software engineer"
 
 # Store with context
-dentate retain "The project deadline is next Friday" -c "team meeting notes"
+./target/release/dentate retain "The project deadline is next Friday" -c "team meeting notes"
 
 # Search memories
-dentate recall "Where does Alice work?"
+./target/release/dentate recall "Where does Alice work?"
 
 # Ask a question (searches + generates answer)
-dentate reflect "Summarize everything about Alice"
+./target/release/dentate reflect "Summarize everything about Alice"
 
 # Check stats
-dentate stats
+./target/release/dentate stats
 ```
 
 ### Library
@@ -88,32 +116,60 @@ reflect("Summarize Alice")
 
 ## Configuration
 
-All configuration through environment variables:
+All settings in `~/.config/dentate/config.toml`. CLI args and environment variables override config values.
 
-| Variable | Default | Description |
-|---|---|---|
-| `DENTATE_LLM_PROVIDER` | `deepseek` | LLM provider (deepseek, openai) |
-| `DENTATE_LLM_MODEL` | `deepseek-chat` | LLM model name |
-| `DENTATE_DATABASE` | `dentate.db` | SQLite database path |
-| `DEEPSEEK_API_KEY` | — | DeepSeek API key |
-| `OPENAI_API_KEY` | — | OpenAI API key (fallback) |
-| `COHERE_API_KEY` | — | Cohere API key (optional reranker) |
+### Provider Support
 
-## Search Strategies
+| Provider | LLM | Embeddings | China Access |
+|----------|-----|------------|--------------|
+| DeepSeek | ✅ | — | ✅ |
+| DashScope (阿里百炼) | ✅ | ✅ | ✅ |
+| Zhipu (智谱) | ✅ | ✅ | ✅ |
+| OpenAI | ✅ | ✅ | ❌ (blocked) |
+| None (keyword-only) | ✅ | — | — |
 
-| Strategy | Description |
-|---|---|
-| `hybrid` | Vector + FTS5 with Reciprocal Rank Fusion (default) |
-| `semantic` | Pure vector similarity search |
-| `keyword` | Pure FTS5 full-text search |
+Recommended for China: **DeepSeek + DashScope**.
 
-## Cost
+### Search Strategies
 
-For a busy agent (100 retain + 500 recall + 50 reflect per day):
-- Embeddings: ~$0.006/day
-- LLM (fact extraction): ~$0.03/day
-- LLM (reflection): ~$0.008/day
-- **~$1.50/month** total
+| Strategy | Description | Needs Embeddings |
+|----------|-------------|-------------------|
+| `hybrid` | Vector + FTS5 with RRF (default) | Yes |
+| `semantic` | Pure vector similarity | Yes |
+| `keyword` | Pure FTS5 full-text search | No |
+
+### Embedding-Free Mode
+
+Set `[embeddings] provider = "none"` to disable embeddings entirely:
+
+- `retain()` skips embedding generation — stores only text + FTS5 index
+- `recall()` uses keyword search only
+- Database size drops ~90% (no vector storage)
+- Most portable and sync-friendly mode
+
+## Database Scale
+
+Measured with 10K sample records:
+
+```
+                   Text + FTS5       With Embeddings (1024-dim)
+Per record          ~520 bytes         ~4600 bytes  (4.6 KB)
+1,000 records         0.5 MB             4.5 MB
+10,000 records        5.0 MB            44 MB
+50,000 records        25 MB            220 MB
+```
+
+The embedding vector dominates at 90% of storage. At typical usage (~2 records/day, 2,000 records after ~3 years), the database is ~9 MB with embeddings, ~1 MB without.
+
+## Cross-Device Sync (Planned)
+
+Current v0.1: SQLite single-file, copy = backup. Future sync approaches:
+
+- **Export/import** (`dentate export` / `dentate import`) — recommended first step
+- **File-level sync** (Syncthing / Dropbox) — single-writer only
+- **WAL replication** (Litestream) — for continuous backup
+
+> **Schema constraint**: the `vec_memories` table uses a fixed embedding dimension. Pin the same embedding provider across synced devices, or use `provider = "none"` for sync-friendly setups.
 
 ## License
 
