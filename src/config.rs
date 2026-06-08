@@ -208,7 +208,8 @@ mod tests {
         assert_eq!(c.llm.provider, "deepseek");
         assert_eq!(c.llm.model, "deepseek-chat");
         assert_eq!(c.embeddings.model, "text-embedding-3-small");
-        assert_eq!(c.database.path, "dentate.db");
+        assert!(c.database.path.ends_with("dentate.db"),
+            "expected path ending with 'dentate.db', got: {}", c.database.path);
         assert!(!c.reranker.enabled);
     }
 

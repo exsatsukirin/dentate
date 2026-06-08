@@ -17,8 +17,6 @@ fn require_api_key() -> Option<String> {
     config::llm_api_key(&cfg)
 }
 
-/// Skip the test if no embeddings API key is available (separate from LLM).
-
 /// Build an EmbeddingsClient from config file + env.
 fn make_embeddings_client() -> Option<EmbeddingsClient> {
     let cfg = config::load_or_default();
@@ -51,7 +49,11 @@ async fn test_extract_facts_basic() {
         }
     };
 
-    let client = LlmClient::new(&api_key, "https://api.deepseek.com/v1", "deepseek-chat");
+    // Use model from config, fall back to deepseek-chat
+    let cfg = config::load_or_default();
+    let model = cfg.llm.model;
+    let base_url = cfg.llm.base_url.unwrap_or_else(|| "https://api.deepseek.com/v1".into());
+    let client = LlmClient::new(&api_key, &base_url, &model);
 
     let facts = client
         .extract_facts("Alice works at Google in Beijing. She is a senior software engineer.", None)
@@ -80,7 +82,11 @@ async fn test_extract_facts_with_context() {
         }
     };
 
-    let client = LlmClient::new(&api_key, "https://api.deepseek.com/v1", "deepseek-chat");
+    // Use model from config, fall back to deepseek-chat
+    let cfg = config::load_or_default();
+    let model = cfg.llm.model;
+    let base_url = cfg.llm.base_url.unwrap_or_else(|| "https://api.deepseek.com/v1".into());
+    let client = LlmClient::new(&api_key, &base_url, &model);
 
     let facts = client
         .extract_facts("The deadline is next Friday.", Some("Project Alpha status meeting"))
@@ -100,7 +106,11 @@ async fn test_reflect_basic() {
         }
     };
 
-    let client = LlmClient::new(&api_key, "https://api.deepseek.com/v1", "deepseek-chat");
+    // Use model from config, fall back to deepseek-chat
+    let cfg = config::load_or_default();
+    let model = cfg.llm.model;
+    let base_url = cfg.llm.base_url.unwrap_or_else(|| "https://api.deepseek.com/v1".into());
+    let client = LlmClient::new(&api_key, &base_url, &model);
 
     let memories = vec![
         dentate::types::Memory {
