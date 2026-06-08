@@ -31,6 +31,19 @@ pub fn open(path: &str) -> anyhow::Result<Connection> {
     Ok(conn)
 }
 
+/// Open an in-memory database for testing.
+///
+/// Registers sqlite-vec auto-extension and runs migrations.
+pub fn open_in_memory() -> anyhow::Result<Connection> {
+    unsafe {
+        sqlite3_auto_extension(Some(std::mem::transmute(sqlite3_vec_init as *const ())));
+    }
+    let conn = Connection::open_in_memory()?;
+    conn.execute_batch("PRAGMA foreign_keys=ON;")?;
+    schema::migrate(&conn)?;
+    Ok(conn)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
